@@ -78,6 +78,8 @@ public class Client {
                     System.out.println(string);
                 }
 
+                Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
+
                 // scheduling occurs
 
                 // count = din.available();
