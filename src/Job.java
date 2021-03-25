@@ -17,4 +17,13 @@ public class Job {
         disk = Integer.parseInt(fieldBuffer[6].trim()); // remove whitespace
     }
 
+    public void printFields() {
+        System.out.println(this.type);
+        System.out.println(this.submitTime);
+        System.out.println(this.id);
+        System.out.println(this.estRuntime);
+        System.out.println(this.core);
+        System.out.println(this.memory);
+        System.out.println(this.disk);
+    }
 }

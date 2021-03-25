@@ -2,11 +2,13 @@ import java.net.*;
 import java.io.*;
 
 public class Client {
-    // Socket s and args
+    // Socket s args
     private static final String hostname = "localhost";
     private static final int serverPort = 50000;
 
     // streams
+    private static DataInputStream din;
+    private static DataOutputStream dout;
 
     // commands
     private static final String HELO = "HELO";
@@ -23,12 +25,13 @@ public class Client {
     private static int count; // will hold the current amount of "available" bytes from s.getInputStream()
     private static byte[] byteBuffer; // will hold the current message from the server stored as bytes
     private static char[] charBuffer; // will hold the current message from the server stored as chars (casted to char from the bytes in byteArray)
-    private static String stringBuffer; // the String instance in which we will store the server's commands
+    private static String stringBuffer; // the String instance in which we will store the server's message, created from charBuffer
+    private static String[] fieldBuffer; // the String array which will contain the server's message as individual Strings, created from stringBuffer
 
     public static void main(String[] args) throws IOException {
         Socket s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of 50000
-        DataInputStream din = new DataInputStream(s.getInputStream());
-        DataOutputStream dout = new DataOutputStream(s.getOutputStream());
+        din = new DataInputStream(s.getInputStream());
+        dout = new DataOutputStream(s.getOutputStream());
 
         try {
             System.out.println("sent HELO");
@@ -73,12 +76,10 @@ public class Client {
             System.out.println(stringBuffer);
 
             while(!stringBuffer.contains(NONE)) {
-                String[] fieldBuffer = stringBuffer.split(" "); // split String into array of strings (each string being a field of JOBN)
-                for(String string : fieldBuffer) {
-                    System.out.println(string);
-                }
+                fieldBuffer = stringBuffer.split(" "); // split String into array of strings (each string being a field of JOBN)
 
                 Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
+                job.printFields();
 
                 // scheduling occurs
 
