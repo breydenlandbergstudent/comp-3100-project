@@ -1,20 +1,20 @@
 public class Job {
     String type;
-    String submitTime;
-    String id;
-    String estRuntime;
-    String core;
-    String memory;
-    String disk;
+    Integer submitTime;
+    Integer id;
+    Integer estRuntime;
+    Integer core;
+    Integer memory;
+    Integer disk;
 
     public Job(String[] fieldBuffer) {
         type = fieldBuffer[0];
-        submitTime = fieldBuffer[1];
-        id = fieldBuffer[2];
-        estRuntime = fieldBuffer[3];
-        core = fieldBuffer[4];
-        memory = fieldBuffer[5];
-        disk = fieldBuffer[6].trim(); // remove whitespace
+        submitTime = Integer.parseInt(fieldBuffer[1]);
+        id = Integer.parseInt(fieldBuffer[2]);
+        estRuntime = Integer.parseInt(fieldBuffer[3]);
+        core = Integer.parseInt(fieldBuffer[4]);
+        memory = Integer.parseInt(fieldBuffer[5]);
+        disk = Integer.parseInt(fieldBuffer[6].trim()); // remove whitespace
     }
 
 }
