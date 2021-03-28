@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.util.*;
 
 import javax.xml.parsers.*;
 import org.w3c.dom.*;
@@ -49,11 +50,11 @@ public class client {
         // send data to server
         DataOutputStream dout = new DataOutputStream(s.getOutputStream());
 
-        byte[] buffer = HELO.getBytes();// sends HELO to server
+        byte[] buffer = HELO.getBytes(); // sends HELO to server
         dout.write(buffer);
         dout.flush();
 
-        buffer = AUTH_username.getBytes();// sends AUTH TANAY to server to get aunthentication
+        buffer = AUTH_username.getBytes(); // sends AUTH TANAY to server to get aunthentication
         dout.write(buffer);
         dout.flush();
 
@@ -89,7 +90,7 @@ public class client {
             List<Server> ServerList = new ArrayList<Server>(); // create server object List to store server information
 
             for (int i = 0; i < servers.getLength(); i++) { // loop through xml file and input data into appropriate
-                                                            // variables
+                // variables
                 Element server = (Element) servers.item(i);
                 String type = server.getAttribute("type");
                 int limit = Integer.parseInt(server.getAttribute("limit"));
@@ -100,8 +101,8 @@ public class client {
                 int disk = Integer.parseInt(server.getAttribute("disk"));
 
                 Server dss = new Server(i, type, limit, bootupTime, hourlyRate, core, memory, disk); // create server
-                                                                                                     // object we read
-                                                                                                     // from xml
+                // object we read
+                // from xml
                 ServerList.add(dss); // add server object to ServerList
 
                 // print out the server information we read from ds-system.xml
@@ -109,10 +110,24 @@ public class client {
                 System.out.println();
 
             }
+            Server s = largServer(ServerList);
+            System.out.println("Largest Server:" + s.t + "with" + s.c + " cores");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    public static Server largServer(List<Server> s) {
+        Server largestServer = new Server(s.get(0).id, s.get(0).t, s.get(0).l, s.get(0).b, s.get(0).hr, s.get(0).c,
+                s.get(0).m, s.get(0).d);
+        for (int i = 1; i < s.size(); i++) {
+            if (s.get(i).c > largestServer.c) {
+                largestServer = s.get(i);
+            }
+        }
+        return largestServer;
     }
 
 }
