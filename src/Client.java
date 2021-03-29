@@ -126,4 +126,59 @@ public class Client {
             System.out.println("Exception: " + e.getMessage());
         }
     }
+    
+    public static void readXML() {
+        try {
+            File DSsystemXML = new File("/home/tanayg/ds-sim/src/pre-compiled/ds-system.xml"); // create file object
+
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(DSsystemXML);
+
+            doc.getDocumentElement().normalize();
+            NodeList servers = doc.getElementsByTagName("server");
+
+            List < Server > ServerList = new ArrayList < Server > (); // create server object List to store server information
+
+            for (int i = 0; i < servers.getLength(); i++) { // loop through xml file and input data into appropriate
+                // variables
+                Element server = (Element) servers.item(i);
+                String type = server.getAttribute("type");
+                int limit = Integer.parseInt(server.getAttribute("limit"));
+                int bootupTime = Integer.parseInt(server.getAttribute("bootupTime"));
+                float hourlyRate = Float.parseFloat(server.getAttribute("hourlyRate"));
+                int core = Integer.parseInt(server.getAttribute("coreCount"));
+                int memory = Integer.parseInt(server.getAttribute("memory"));
+                int disk = Integer.parseInt(server.getAttribute("disk"));
+
+                Server dss = new Server(i, type, limit, bootupTime, hourlyRate, core, memory, disk); // create server
+                // object we read
+                // from xml
+                ServerList.add(dss); // add server object to ServerList
+
+                // print out the server information we read from ds-system.xml
+                System.out.printf("'%s %s %s %s %s %s %s", type, limit, bootupTime, hourlyRate, core, memory, disk);
+                System.out.println();
+
+            }
+            Server s = largServer(ServerList);
+            System.out.println("Largest Server:" + s.t + "with" + s.c + " cores");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public static Server largServer(List < Server > s) {
+        Server largestServer = new Server(s.get(0).id, s.get(0).t, s.get(0).l, s.get(0).b, s.get(0).hr, s.get(0).c,
+            s.get(0).m, s.get(0).d);
+        for (int i = 1; i < s.size(); i++) {
+            if (s.get(i).c > largestServer.c) {
+                largestServer = s.get(i);
+            }
+        }
+        return largestServer;
+    }
+
 }
