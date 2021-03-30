@@ -18,12 +18,13 @@ public class Job {
     }
 
     public void printFields() {
-        System.out.println(this.type);
-        System.out.println(this.submitTime);
-        System.out.println(this.id);
-        System.out.println(this.estRuntime);
-        System.out.println(this.core);
-        System.out.println(this.memory);
-        System.out.println(this.disk);
+        System.out.println("-- JOB DATA --");
+        System.out.println("Type : " + this.type);
+        System.out.println("Submit Time : " + this.submitTime);
+        System.out.println("ID : " + this.id);
+        System.out.println("Est. Runtime : " + this.estRuntime);
+        System.out.println("Core : " + this.core);
+        System.out.println("Memory : " + this.memory);
+        System.out.println("Disk : " + this.disk);
     }
 }

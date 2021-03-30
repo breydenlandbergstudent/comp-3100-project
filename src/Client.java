@@ -1,5 +1,10 @@
 import java.net.*;
+import java.util.*;
 import java.io.*;
+
+import javax.xml.parsers.*;
+import org.w3c.dom.*;
+
 
 public class Client {
     // Socket s args
@@ -7,7 +12,7 @@ public class Client {
     private static final int serverPort = 50000;
 
     // streams
-    private static DataInputStream din;
+    private static InputStreamReader din;
     private static DataOutputStream dout;
 
     // commands
@@ -18,19 +23,26 @@ public class Client {
     private static final String AUTH_username = AUTH + " " + username;
     private static final String REDY = "REDY";
     private static final String JOBN = "JOBN";
+    private static final String SCHD = "SCHD";
     private static final String NONE = "NONE";
     private static final String QUIT = "QUIT";
 
     // other fields
-    private static int count; // will hold the current amount of "available" bytes from s.getInputStream()
     private static byte[] byteBuffer; // will hold the current message from the server stored as bytes
     private static char[] charBuffer; // will hold the current message from the server stored as chars (casted to char from the bytes in byteArray)
     private static String stringBuffer; // the String instance in which we will store the server's message, created from charBuffer
     private static String[] fieldBuffer; // the String array which will contain the server's message as individual Strings, created from stringBuffer
 
+    private static final int CHAR_BUFFER_LENGTH = 50; // will hold the current amount of "available" bytes from s.getInputStream()
+
+    private static List<Server> serverList; // create server object List to store server information
+    private static File DSsystemXML = new File("/home/tanayg/ds-sim/src/pre-compiled/ds-system.xml"); // create file object
+
     public static void main(String[] args) throws IOException {
+        serverList = new ArrayList<>(); // initialise list of servers
+
         Socket s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of 50000
-        din = new DataInputStream(s.getInputStream());
+        din = new InputStreamReader(s.getInputStream());
         dout = new DataOutputStream(s.getOutputStream());
 
         try {
@@ -48,31 +60,26 @@ public class Client {
 
             // replies with OK after printing
 
-            Thread.sleep (3333);
+            readXML ();
 
-            // readXML ();
-            System.out.println("read XML and send REDY");
+            Server largestServer = getLargestServer(serverList); // get largest server
+            System.out.println("Largest Server:" + largestServer.type + " with " + largestServer.core + " cores");
+
+            System.out.println("XML file successfully read. Sending REDY ...");
             byteBuffer = REDY.getBytes();
             dout.write(byteBuffer);
             dout.flush();
 
             // server sends JOBN
 
-            System.out.println("receiving JOBN");
+            System.out.println("receiving JOBN ...");
 
-            din.skipBytes(OK.length() * 2); // skip the first two OK commands sent by server
-            count = din.available(); // get length of byte buffer from din's number of bytes that can be read
+            din.skip(OK.length() * 2); // skip the first two OK commands sent by server
+            charBuffer = new char[CHAR_BUFFER_LENGTH];
+            din.read(charBuffer, 0, charBuffer.length); // read from din into charBuffer
+            System.out.println("JOB successfully received.");
 
-            byteBuffer = new byte[count];
-            din.read(byteBuffer); // read from din into byte buffer
-            charBuffer = new char[count];
-
-            // cast byte array into char array
-            for(int i = 0; i < count; i++) {
-                charBuffer[i] = (char)byteBuffer[i];
-            }
-
-            stringBuffer = new String(charBuffer); // cast char array into String
+            stringBuffer = String.valueOf(charBuffer); // cast char array into String
             System.out.println(stringBuffer);
 
             while(!stringBuffer.contains(NONE)) {
@@ -81,7 +88,12 @@ public class Client {
                 Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
                 job.printFields();
 
-                // scheduling occurs
+                /* SCHEDULE JOB */
+                Server capable = serverList.get(1); // hardcoded for testing 
+                String scheduleString = SCHD + " " + job.id + " " + capable.type + " " + capable.id;
+                byteBuffer = scheduleString.getBytes();
+                dout.write(byteBuffer);
+                dout.flush();
 
                 // count = din.available();
 
@@ -98,14 +110,14 @@ public class Client {
                 // stringBuffer = new String(charBuffer); // cast char array into String
                 // System.out.println(stringBuffer);
 
-                // make a method for the above
+                // *make a method for the above
 
-                break;
+                // for testing
+                break; 
             }
 
             // map String array to Job class values
 
-            
             byteBuffer = QUIT.getBytes();
             dout.write(byteBuffer);
             dout.flush();
@@ -129,16 +141,12 @@ public class Client {
     
     public static void readXML() {
         try {
-            File DSsystemXML = new File("/home/tanayg/ds-sim/src/pre-compiled/ds-system.xml"); // create file object
-
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(DSsystemXML);
 
             doc.getDocumentElement().normalize();
             NodeList servers = doc.getElementsByTagName("server");
-
-            List < Server > ServerList = new ArrayList < Server > (); // create server object List to store server information
 
             for (int i = 0; i < servers.getLength(); i++) { // loop through xml file and input data into appropriate
                 // variables
@@ -154,15 +162,13 @@ public class Client {
                 Server dss = new Server(i, type, limit, bootupTime, hourlyRate, core, memory, disk); // create server
                 // object we read
                 // from xml
-                ServerList.add(dss); // add server object to ServerList
+                serverList.add(dss); // add server object to ServerList
 
                 // print out the server information we read from ds-system.xml
                 System.out.printf("'%s %s %s %s %s %s %s", type, limit, bootupTime, hourlyRate, core, memory, disk);
                 System.out.println();
 
             }
-            Server s = largServer(ServerList);
-            System.out.println("Largest Server:" + s.t + "with" + s.c + " cores");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -170,11 +176,12 @@ public class Client {
 
     }
 
-    public static Server largServer(List < Server > s) {
-        Server largestServer = new Server(s.get(0).id, s.get(0).t, s.get(0).l, s.get(0).b, s.get(0).hr, s.get(0).c,
-            s.get(0).m, s.get(0).d);
+    public static Server getLargestServer(List<Server> s) {
+        Server largestServer = new Server(s.get(0).id, s.get(0).type, s.get(0).limit, s.get(0).bootUpTime, 
+                                    s.get(0).hourlyRate, s.get(0).core, s.get(0).memory, s.get(0).disk);
+            
         for (int i = 1; i < s.size(); i++) {
-            if (s.get(i).c > largestServer.c) {
+            if (s.get(i).core > largestServer.core) {
                 largestServer = s.get(i);
             }
         }
