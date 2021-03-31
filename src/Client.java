@@ -1,148 +1,153 @@
-import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.io.*;
+
 import javax.xml.parsers.*;
 import org.w3c.dom.*;
 
+import jdk.jshell.Snippet.SubKind;
+
+
 public class Client {
+    // Socket s args
+    private static final String hostname = "localhost";
+    private static final int serverPort = 50000;
+
+    // streams
+    private static InputStreamReader din;
+    private static DataOutputStream dout;
+
+    // commands
     private static final String HELO = "HELO";
-    private static final String AUTH = "AUTH group_55";
+    private static final String OK = "OK";
+    private static final String AUTH = "AUTH";
+    private static final String username = "group_55";
+    private static final String AUTH_username = AUTH + " " + username;
     private static final String REDY = "REDY";
+    private static final String JOBN = "JOBN";
+    private static final String JCPL = "JCPL";
     private static final String SCHD = "SCHD";
+    private static final String NONE = "NONE";
     private static final String QUIT = "QUIT";
 
-    private static final String OK = "OK";
+    // other fields
+    private static byte[] byteBuffer; // will hold the current message from the server stored as bytes
+    private static char[] charBuffer; // will hold the current message from the server stored as chars (casted to char from the bytes in byteArray)
+    private static String stringBuffer; // the String instance in which we will store the server's message, created from charBuffer
+    private static String[] fieldBuffer; // the String array which will contain the server's message as individual Strings, created from stringBuffer
 
-    private static final String NONE = "NONE";
-    private static final String JOBN = "JOBN";
-    private static final String JOBP = "JOBP";
-    private static final String JCPL = "JCPL";
-    private static final String RESF = "RESF";
-    private static final String RESR = "RESR";
+    private static final int CHAR_BUFFER_LENGTH = 50; // will hold the current amount of "available" bytes from s.getInputStream()
 
-    private static final String GETS = "GETS";
-    private static final String GETS_All = GETS + " All";
-    private static final String GETS_Capable = GETS + " Capable";
-    private static final String GETS_Avail = GETS + " Avail";
+    private static List<Server> serverList; // create server object List to store server information
+    private static File DSsystemXML = new File("/home/amir/Documents/ds-sim/src/pre-compiled/ds-system.xml"); // create file object
 
-    private static final int BUFFER_LENGTH = 50;
+    public static void main(String[] args) throws IOException {
+        serverList = new ArrayList<>(); // initialise list of servers
 
-    public static List<Server> serverList;     // store Servers read from ds-system.xml
-
-    public static void main(String[] args) {
-        byte[] buffer;               // store Client messages to be sent to ds-server
+        Socket s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of 50000
+        din = new InputStreamReader(s.getInputStream());
+        dout = new DataOutputStream(s.getOutputStream());
 
         try {
-            Socket socket = new Socket("localhost", 50000);
-
-            InputStreamReader isr = new InputStreamReader(socket.getInputStream());
-            DataOutputStream dout = new DataOutputStream(socket.getOutputStream());
-
-
-            /**** HANDSHAKE PHASE ****/
-            buffer = HELO.getBytes();
-            dout.write(buffer); 
+            System.out.println("sent HELO");
+            byteBuffer = HELO.getBytes();
+            dout.write (byteBuffer);
             dout.flush();
-            System.out.println("HELO sent.\n");
 
-            buffer = AUTH.getBytes();
-            dout.write(buffer);
+            // server replies with OK
+
+            System.out.println("sent AUTH username");
+            byteBuffer = AUTH_username.getBytes();
+            dout.write(byteBuffer);
             dout.flush();
-            System.out.println("AUTH group_55 sent.\n");
-            
 
-            // READ XML 
-            readXML();
-            System.out.println("-- SERVER LIST --");
-            for (Server s : serverList) {
-                System.out.println(s.id + " : " + s.type);
-            }
-            System.out.println("ds-system.xml successfully read. All Server info stored.\n");
+            // replies with OK after printing
 
+            readXML ();
 
-            /**** JOB SCHEDULING PHASE ****/
-            buffer = REDY.getBytes();
-            dout.write(buffer);
+            Server largestServer = getLargestServer(serverList); // get largest server
+            System.out.println("Largest Server:" + largestServer.type + " with " + largestServer.core + " cores");
+
+            System.out.println("XML file successfully read. Sending REDY ...");
+            byteBuffer = REDY.getBytes();
+            dout.write(byteBuffer);
             dout.flush();
-            System.out.println("REDY sent.\n");
 
-            char[] cbuf = new char[BUFFER_LENGTH];           // create char array to store job from server
-            isr.skip(4);                                     // offset to skip "OKOK"
-            isr.read(cbuf, 0, cbuf.length);                  // read input stream data into char array (cbuf)
-            System.out.println("Job successfully read into char buffer.");
+            // server sends JOBN
 
-            String jobString;
-            String[] fieldBuffer;
+            System.out.println("receiving JOBN ...");
 
-            if (!(jobString = String.valueOf(cbuf)).contains(NONE)) {
-                fieldBuffer = jobString.split(" "); // split job data into separate Strings
+            din.skip(4); // skip the first two OK commands sent by server
+            charBuffer = new char[CHAR_BUFFER_LENGTH];
+            din.read(charBuffer); // read from din into charBuffer
+            System.out.println("JOB successfully received.");
 
-                // initialise a Job object with data from jobString
-                Job job = new Job(fieldBuffer);
+            while(!(stringBuffer = String.valueOf(charBuffer)).contains(NONE)) {
+                fieldBuffer = stringBuffer.split(" "); // split String into array of strings (each string being a field of JOBN)
 
-                // String jobCMD = job.core + " " + job.memory + " " + job.disk;
-                // // request for Server capable of handling current job
-                // byte[] GETSbuffer = (GETS_Capable + " " + jobCMD).getBytes();
-                // dout.write(GETSbuffer);
-                // dout.flush();
-
-                buffer = OK.getBytes();
-                dout.write(buffer);
-                dout.flush();
+                Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
+                job.printFields();
 
                 /* SCHEDULE JOB */
+                System.out.println ("hello");
+                String scheduleString = SCHD + " " + job.id + " " + largestServer.type + " " + largestServer.id;
+                byteBuffer = scheduleString.getBytes();
+                dout.write(byteBuffer);
+                dout.flush();
+                System.out.println ("hello");
 
-                Server capable = serverList.get(1);
-                String scheduleString = SCHD + " " + job.id + " " + capable.type + " " + capable.id;
-                buffer = scheduleString.getBytes();
-                dout.write(buffer);
+                // send REDY again for next job and reset buffers
+                byteBuffer = REDY.getBytes();
+                dout.write(byteBuffer);
                 dout.flush();
 
-                /* FOR TESTING
-                Server capable = serverList.get(0);
-                for (Server s : serverList) {
-                    if (s.core >= job.core && s.memory >= job.memory && s.disk >= job.disk) {
-                        capable = s;
-                        break;
-                    }
-                }
+                din.skip(2); // skip the first two OK commands sent by server
+                charBuffer = new char[CHAR_BUFFER_LENGTH];
+                din.read(charBuffer); // read from din into charBuffer
 
-                String scheduleString = SCHD + " " + job.id + " " + capable.type + " " + capable.id;
-                buffer = scheduleString.getBytes();
-                dout.write(buffer);
-                dout.flush();
-                */
+                // count = din.available();
 
-                // RESET buffers for next loop iteration (next job scheduling)
-                // send REDY to server for next job
-                // buffer = REDY.getBytes();
-                // dout.write(buffer);
-                // dout.flush();
+                // byteBuffer = new byte[count];
+                // din.read(byteBuffer);
 
-                // read new input into cbuf
-                // cbuf = new char[BUFFER_LENGTH];
-                // isr.read(cbuf, 0, cbuf.length);
+                // charBuffer = new char[count];
+
+                // // cast byte array into char array
+                // for(int i = 0; i < count; i++) {
+                // charBuffer[i] = (char)byteBuffer[i];
+                // }
+
+                // stringBuffer = new String(charBuffer); // cast char array into String
+                // System.out.println(stringBuffer);
+                // *make a method for the above
+                // for testing
             }
 
-            buffer = QUIT.getBytes();
-            dout.write(buffer);
+            // map String array to Job class values
+
+            byteBuffer = QUIT.getBytes();
+            dout.write(byteBuffer);
             dout.flush();
 
-            isr.close();
             dout.close();
-            socket.close();
+            s.close();
         }
-        catch (Exception e) {
-            System.out.println(e);
+        catch(UnknownHostException e) {
+            System.out.println("Unknown Host Exception: " + e.getMessage());
+        }
+        catch(EOFException e) {
+            System.out.println("End of File Exception: " + e.getMessage());
+        }
+        catch(IOException e) {
+            System.out.println("IO Exception: " + e.getMessage());
+        }
+        catch(Exception e) {
+            System.out.println("Exception: " + e.getMessage());
         }
     }
-
+    
     public static void readXML() {
-        serverList = new ArrayList<Server>(); // initialise server object List to store server information
-
         try {
-            File DSsystemXML = new File("/home/amir/Documents/ds-sim/src/pre-compiled/ds-system.xml"); // create file object
-
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(DSsystemXML);
@@ -151,30 +156,44 @@ public class Client {
             NodeList servers = doc.getElementsByTagName("server");
 
             for (int i = 0; i < servers.getLength(); i++) { // loop through xml file and input data into appropriate
-                                                            // variables
+                // variables
+                
                 Element server = (Element) servers.item(i);
-                String type = server.getAttribute("type");
-                int limit = Integer.parseInt(server.getAttribute("limit"));
-                int bootupTime = Integer.parseInt(server.getAttribute("bootupTime"));
-                float hourlyRate = Float.parseFloat(server.getAttribute("hourlyRate"));
-                int core = Integer.parseInt(server.getAttribute("coreCount"));
-                int memory = Integer.parseInt(server.getAttribute("memory"));
-                int disk = Integer.parseInt(server.getAttribute("disk"));
+                for (int j = 0; j < Integer.parseInt(server.getAttribute("limit")); j++) {
+                    String type = server.getAttribute("type");
+                    int limit = Integer.parseInt(server.getAttribute("limit"));
+                    int bootupTime = Integer.parseInt(server.getAttribute("bootupTime"));
+                    float hourlyRate = Float.parseFloat(server.getAttribute("hourlyRate"));
+                    int core = Integer.parseInt(server.getAttribute("coreCount"));
+                    int memory = Integer.parseInt(server.getAttribute("memory"));
+                    int disk = Integer.parseInt(server.getAttribute("disk"));
 
-                Server dss = new Server(i, type, limit, bootupTime, hourlyRate, core, memory, disk); // create server
-                                                                                                     // object we read
-                                                                                                     // from xml
-                serverList.add(dss); // add server object to ServerList
+                    Server dss = new Server(j, type, limit, bootupTime, hourlyRate, core, memory, disk); // create server
+                    serverList.add(dss); // add server object to ServerList
 
-                // print out the server information we read from ds-system.xml
-                // System.out.printf("'%s %s %s %s %s %s %s", type, limit, bootupTime, hourlyRate, core, memory, disk);
-                // System.out.println();
+                    // print out the server information we read from ds-system.xml
+                    System.out.printf("%s %s %s %s %s %s %s %s", dss.id, dss.type, dss.limit, dss.bootUpTime, dss.hourlyRate, dss.core, dss.memory, dss.disk);
+                    System.out.println();
+
+                }
 
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    public static Server getLargestServer(List<Server> s) {
+        Server largestServer = s.get(0);
+            
+        for (int i = 1; i < s.size(); i++) {
+            if (s.get(i).core > largestServer.core) {
+                largestServer = s.get(i);
+            }
+        }
+        return largestServer;
     }
 
 }
