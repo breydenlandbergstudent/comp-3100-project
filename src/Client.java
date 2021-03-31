@@ -5,8 +5,6 @@ import java.io.*;
 import javax.xml.parsers.*;
 import org.w3c.dom.*;
 
-import jdk.jshell.Snippet.SubKind;
-
 
 public class Client {
     // Socket s args
@@ -64,9 +62,7 @@ public class Client {
             // replies with OK after printing
 
             readXML ();
-
             Server largestServer = getLargestServer(serverList); // get largest server
-            System.out.println("Largest Server:" + largestServer.type + " with " + largestServer.core + " cores");
 
             System.out.println("XML file successfully read. Sending REDY ...");
             byteBuffer = REDY.getBytes();
@@ -77,53 +73,40 @@ public class Client {
 
             System.out.println("receiving JOBN ...");
 
-            din.skip(4); // skip the first two OK commands sent by server
+            din.skip(OK.length() * 2); // skip the first two OK commands sent by server
             charBuffer = new char[CHAR_BUFFER_LENGTH];
             din.read(charBuffer); // read from din into charBuffer
-            System.out.println("JOB successfully received.");
 
             while(!(stringBuffer = String.valueOf(charBuffer)).contains(NONE)) {
-                fieldBuffer = stringBuffer.split(" "); // split String into array of strings (each string being a field of JOBN)
 
-                Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
-                job.printFields();
+                if (stringBuffer.contains(JOBN)) {
+                    fieldBuffer = stringBuffer.split(" "); // split String into array of strings (each string being a field of JOBN)
 
-                /* SCHEDULE JOB */
-                System.out.println ("hello");
-                String scheduleString = SCHD + " " + job.id + " " + largestServer.type + " " + largestServer.id;
-                byteBuffer = scheduleString.getBytes();
-                dout.write(byteBuffer);
-                dout.flush();
-                System.out.println ("hello");
+                    System.out.println("JOB successfully received.");
+                    Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
+                    job.printFields();
 
-                // send REDY again for next job and reset buffers
-                byteBuffer = REDY.getBytes();
-                dout.write(byteBuffer);
-                dout.flush();
+                    /* SCHEDULE JOB */
+                    String scheduleString = SCHD + " " + job.id + " " + largestServer.type + " " + largestServer.id;
+                    byteBuffer = scheduleString.getBytes();
+                    dout.write(byteBuffer);
+                    dout.flush();
 
-                din.skip(2); // skip the first two OK commands sent by server
-                charBuffer = new char[CHAR_BUFFER_LENGTH];
-                din.read(charBuffer); // read from din into charBuffer
+                    // Send REDY for the next job
+                    byteBuffer = REDY.getBytes();
+                    dout.write(byteBuffer);
+                    dout.flush();
 
-                // count = din.available();
-
-                // byteBuffer = new byte[count];
-                // din.read(byteBuffer);
-
-                // charBuffer = new char[count];
-
-                // // cast byte array into char array
-                // for(int i = 0; i < count; i++) {
-                // charBuffer[i] = (char)byteBuffer[i];
-                // }
-
-                // stringBuffer = new String(charBuffer); // cast char array into String
-                // System.out.println(stringBuffer);
-                // *make a method for the above
-                // for testing
+                    // reset charBuffer & read next job
+                    din.skip(OK.length()); // skip OK
+                    charBuffer = new char[CHAR_BUFFER_LENGTH];
+                    din.read(charBuffer); // read from din into charBuffer
+                    System.out.println("New JOB successfully received.");
+                } else {
+                    System.out.println("Job not received.");
+                    break;
+                }
             }
-
-            // map String array to Job class values
 
             byteBuffer = QUIT.getBytes();
             dout.write(byteBuffer);
@@ -155,9 +138,7 @@ public class Client {
             doc.getDocumentElement().normalize();
             NodeList servers = doc.getElementsByTagName("server");
 
-            for (int i = 0; i < servers.getLength(); i++) { // loop through xml file and input data into appropriate
-                // variables
-                
+            for (int i = 0; i < servers.getLength(); i++) { // loop through xml file and input data into appropriate variables
                 Element server = (Element) servers.item(i);
                 for (int j = 0; j < Integer.parseInt(server.getAttribute("limit")); j++) {
                     String type = server.getAttribute("type");
@@ -169,14 +150,14 @@ public class Client {
                     int disk = Integer.parseInt(server.getAttribute("disk"));
 
                     Server dss = new Server(j, type, limit, bootupTime, hourlyRate, core, memory, disk); // create server
+                    // object we read
+                    // from xml
                     serverList.add(dss); // add server object to ServerList
 
                     // print out the server information we read from ds-system.xml
                     System.out.printf("%s %s %s %s %s %s %s %s", dss.id, dss.type, dss.limit, dss.bootUpTime, dss.hourlyRate, dss.core, dss.memory, dss.disk);
                     System.out.println();
-
                 }
-
             }
 
         } catch (Exception e) {
