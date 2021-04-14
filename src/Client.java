@@ -1,10 +1,8 @@
 import java.net.*;
 import java.util.*;
 import java.io.*;
-
 import javax.xml.parsers.*;
 import org.w3c.dom.*;
-
 
 public class Client {
     // Socket s args
@@ -34,7 +32,7 @@ public class Client {
     private static String stringBuffer; // the String instance in which we will store the server's message, created from charBuffer
     private static String[] fieldBuffer; // the String array which will contain the server's message as individual Strings, created from stringBuffer
 
-    private static final int CHAR_BUFFER_LENGTH = 50; // will hold the current amount of "available" bytes from s.getInputStream()
+    private static final int CHAR_BUFFER_LENGTH = 100; 
 
     private static List<Server> serverList; // create server object List to store server information
     private static File DSsystemXML = new File("/home/amir/Documents/ds-sim/src/pre-compiled/ds-system.xml"); // create file object
@@ -61,7 +59,7 @@ public class Client {
 
             // replies with OK after printing
 
-            readXML ();
+            readXML(); // get list of servers 
             Server largestServer = getLargestServer(serverList); // get largest server
 
             System.out.println("XML file successfully read. Sending REDY ...");
@@ -70,7 +68,6 @@ public class Client {
             dout.flush();
 
             // server sends JOBN
-
             System.out.println("receiving JOBN ...");
 
             din.skip(OK.length() * 2); // skip the first two OK commands sent by server
@@ -82,7 +79,7 @@ public class Client {
                 if (stringBuffer.contains(JOBN)) {
                     fieldBuffer = stringBuffer.split(" "); // split String into array of strings (each string being a field of JOBN)
 
-                    System.out.println("JOB successfully received.");
+                    System.out.println("New JOB successfully received.");
                     Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
                     job.printFields();
 
@@ -97,20 +94,34 @@ public class Client {
                     dout.write(byteBuffer);
                     dout.flush();
 
+                    System.out.println("receiving JOBN ...");
+
                     // reset charBuffer & read next job
                     din.skip(OK.length()); // skip OK
                     charBuffer = new char[CHAR_BUFFER_LENGTH];
                     din.read(charBuffer); // read from din into charBuffer
-                    System.out.println("New JOB successfully received.");
-                } else {
-                    System.out.println("Job not received.");
-                    break;
+                } 
+                else if (stringBuffer.contains(JCPL)) {
+                    System.out.println("Job completed.");
+
+                    // Send REDY for the next job (if any)
+                    byteBuffer = REDY.getBytes();
+                    dout.write(byteBuffer);
+                    dout.flush();
+
+                    // reset charBuffer & read next job
+                    charBuffer = new char[CHAR_BUFFER_LENGTH];
+                    din.read(charBuffer); // read from din into charBuffer
                 }
+               
             }
 
+            System.out.println("TERMINATING CONNECTION ...");
             byteBuffer = QUIT.getBytes();
             dout.write(byteBuffer);
             dout.flush();
+
+            System.out.println("CONNECTION TERMINATED.");
 
             dout.close();
             s.close();
@@ -170,7 +181,7 @@ public class Client {
         Server largestServer = s.get(0);
             
         for (int i = 1; i < s.size(); i++) {
-            if (s.get(i).core > largestServer.core) {
+            if (s.get(i).core >= largestServer.core && s.get(i).memory >= largestServer.memory && s.get(i).disk >= largestServer.disk) {
                 largestServer = s.get(i);
             }
         }
