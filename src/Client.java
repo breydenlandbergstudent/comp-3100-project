@@ -14,32 +14,31 @@ public class Client {
     private static final int serverPort = 50000;
 
     // streams
-    private static InputStreamReader din;
+    private static InputStreamReader isr;
+    private static BufferedReader din;
     private static DataOutputStream dout;
 
     // commands
     private static final String HELO = "HELO";
-    private static final String OK = "OK";
     private static final String AUTH = "AUTH";
-    private static final String username = "group_55";
+    private static final String username = "amir";
     private static final String AUTH_username = AUTH + " " + username;
     private static final String REDY = "REDY";
     private static final String JOBN = "JOBN";
     private static final String JCPL = "JCPL";
     private static final String SCHD = "SCHD";
+    private static final String OK = "OK";
     private static final String NONE = "NONE";
     private static final String QUIT = "QUIT";
 
     // buffer fields
     private static byte[] byteBuffer; // will hold the current message from the server stored as bytes
-    private static char[] charBuffer; /* will hold the current message from the server stored as chars
-                                                                       (casted to char from byteArray) */
+
     private static String stringBuffer; /* will hold the current message from the server stored in a string
                                                                        (created from charArray)        */
     private static String[] fieldBuffer; /* will hold the current message from the server as an array of strings
                                                                        (created from stringBuffer)     */
 
-    private static final int CHAR_BUFFER_LENGTH = 100;
     private static String scheduleString; // string to be scheduled
 
     // create server/list objects
@@ -47,7 +46,7 @@ public class Client {
     private static Server largestServer;
 
     // create file object
-    private static File DSsystemXML = new File("/home/breyden/Documents/ds-sim/ds-sim/src/pre-compiled/ds-system.xml");
+    private static File DSsystemXML = new File("/home/amir/Documents/Testing/ds-system.xml");
 
     public static void main(String[] args) throws IOException {
         setup();
@@ -68,20 +67,16 @@ public class Client {
             System.out.println("XML file successfully read. Sending REDY ...");
             writeBytes(REDY);
 
-            System.out.println("receiving JOBN ..."); // server sends JOBN
-
-            din.skip(OK.length() * 2); // skip the first two OK commands sent by server
             readCharBuffer(); // reset charBuffer & read job
 
-            while (!(stringBuffer = String.valueOf(charBuffer)).contains(NONE)) {
+            while (!stringBuffer.contains(NONE)) {
 
                 if (stringBuffer.contains(JOBN)) {
                     fieldBuffer = stringBuffer.split(" "); /* split String into array of strings
                                                               (each string being a field of JOBN) */
 
-                    System.out.println("New JOB successfully received.");
                     Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
-                    job.printFields();
+                    // job.printFields();
 
                     /* SCHEDULE JOB */
                     scheduleString = SCHD + " " + job.id + " " + largestServer.type + " " + largestServer.id;
@@ -89,19 +84,15 @@ public class Client {
 
                     writeBytes(REDY); // send REDY for the next job
 
-                    System.out.println("receiving JOBN ...");
-
-                    din.skip(OK.length()); // skip OK
                     readCharBuffer(); // reset charBuffer & read next job
-
-                } else if (stringBuffer.contains(JCPL)) {
-                    System.out.println("Job completed.");
-
-                    writeBytes(REDY); // Send REDY for the next job (if any)
+                } 
+                else if (stringBuffer.contains(JCPL)) {
+                    writeBytes(REDY); // send REDY for the next job
 
                     readCharBuffer(); // reset charBuffer & read next job
-                }
-
+                } else if (stringBuffer.contains(OK)) {
+                    readCharBuffer(); // reset charBuffer & read next job
+                } 
             }
 
             System.out.println("TERMINATING CONNECTION ...");
@@ -110,6 +101,7 @@ public class Client {
 
             System.out.println("CONNECTION TERMINATED.");
 
+            din.close();
             dout.close();
             s.close();
         } catch (UnknownHostException e) {
@@ -127,12 +119,14 @@ public class Client {
         serverList = new ArrayList<>(); // initialise list of servers
 
         s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of 50000
-        din = new InputStreamReader(s.getInputStream());
+        isr = new InputStreamReader(s.getInputStream());
+        din = new BufferedReader(isr);
         dout = new DataOutputStream(s.getOutputStream());
     }
 
     public static void writeBytes(String command) throws IOException {
-        byteBuffer = command.getBytes();
+        byteBuffer = (command + "\n").getBytes();
+        // byteBuffer = command.getBytes();
         dout.write(byteBuffer);
         dout.flush();
     }
@@ -182,16 +176,15 @@ public class Client {
     }
 
     public static void readCharBuffer() throws IOException {
-        charBuffer = new char[CHAR_BUFFER_LENGTH];
-        din.read(charBuffer); // read from din into charBuffer
+        // charBuffer = new char[CHAR_BUFFER_LENGTH];
+        stringBuffer = din.readLine(); // read from din into charBuffer
     }
 
     public static Server getLargestServer(List<Server> s) {
         largestServer = s.get(0);
 
         for (int i = 1; i < s.size(); i++) {
-            if (s.get(i).core >= largestServer.core && s.get(i).memory >= largestServer.memory
-                                                    && s.get(i).disk >= largestServer.disk) {
+            if (s.get(i).core > largestServer.core) {
                 largestServer = s.get(i);
             }
         }
