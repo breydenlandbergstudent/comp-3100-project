@@ -1,11 +1,11 @@
 public class Job {
-    String type;
-    Integer submitTime;
-    Integer id;
-    Integer estRuntime;
-    Integer core;
-    Integer memory;
-    Integer disk;
+    protected static String type;
+    protected static Integer submitTime;
+    protected static Integer id;
+    protected static Integer estRuntime;
+    protected static Integer core;
+    protected static Integer memory;
+    protected static Integer disk;
 
     public Job(String[] fieldBuffer) {
         type = fieldBuffer[0];
@@ -19,12 +19,12 @@ public class Job {
 
     public void printFields() {
         System.out.println("-- JOB DATA --");
-        System.out.println("Type : " + this.type);
-        System.out.println("Submit Time : " + this.submitTime);
-        System.out.println("ID : " + this.id);
-        System.out.println("Est. Runtime : " + this.estRuntime);
-        System.out.println("Core : " + this.core);
-        System.out.println("Memory : " + this.memory);
-        System.out.println("Disk : " + this.disk);
+        System.out.println("Type : " + type);
+        System.out.println("Submit Time : " + submitTime);
+        System.out.println("ID : " + id);
+        System.out.println("Est. Runtime : " + estRuntime);
+        System.out.println("Core : " + core);
+        System.out.println("Memory : " + memory);
+        System.out.println("Disk : " + disk);
     }
 }

@@ -1,12 +1,12 @@
 public class Server {
-    int id;
-    String type;
-    int limit;
-    int bootUpTime;
-    float hourlyRate;
-    int core;
-    int memory;
-    int disk;
+    protected int id;
+    protected String type;
+    protected int limit;
+    protected int bootUpTime;
+    protected float hourlyRate;
+    protected int core;
+    protected int memory;
+    protected int disk;
 
     public Server(int id, String t, int l, int b, float hr, int c, int m, int d) {
         this.id = id;
