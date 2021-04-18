@@ -5,7 +5,11 @@ import javax.xml.parsers.*;
 import org.w3c.dom.*;
 
 public class Client {
-    // Socket s args
+
+    // s
+    private static Socket s;
+
+    // s args
     private static final String hostname = "localhost";
     private static final int serverPort = 50000;
 
@@ -26,55 +30,44 @@ public class Client {
     private static final String NONE = "NONE";
     private static final String QUIT = "QUIT";
 
-    // other fields
+    // buffer fields
     private static byte[] byteBuffer; // will hold the current message from the server stored as bytes
-    private static char[] charBuffer; // will hold the current message from the server stored as chars (casted to char
-                                      // from the bytes in byteArray)
-    private static String stringBuffer; // the String instance in which we will store the server's message, created from
-                                        // charBuffer
-    private static String[] fieldBuffer; // the String array which will contain the server's message as individual
-                                         // Strings, created from stringBuffer
+    private static char[] charBuffer; /* will hold the current message from the server stored as chars
+                                                                       (casted to char from byteArray) */
+    private static String stringBuffer; /* will hold the current message from the server stored in a string
+                                                                       (created from charArray)        */
+    private static String[] fieldBuffer; /* will hold the current message from the server as an array of strings
+                                                                       (created from stringBuffer)     */
 
     private static final int CHAR_BUFFER_LENGTH = 100;
 
-    private static List<Server> serverList; // create server object List to store server information
-    private static File DSsystemXML = new File("/home/amir/Documents/ds-sim/src/pre-compiled/ds-system.xml"); // create
-                                                                                                              // file
-                                                                                                              // object
+    // create server/list objects
+    private static List<Server> serverList;
+    private static Server largestServer;
+
+    // create file object
+    private static File DSsystemXML = new File("/home/breyden/Documents/ds-sim/ds-sim/src/pre-compiled/ds-system.xml");
 
     public static void main(String[] args) throws IOException {
-        serverList = new ArrayList<>(); // initialise list of servers
-
-        Socket s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of
-                                                     // 50000
-        din = new InputStreamReader(s.getInputStream());
-        dout = new DataOutputStream(s.getOutputStream());
+        setup();
 
         try {
             System.out.println("sent HELO");
-            byteBuffer = HELO.getBytes();
-            dout.write(byteBuffer);
-            dout.flush();
+            writeBytes(HELO);
 
             // server replies with OK
 
             System.out.println("sent AUTH username");
-            byteBuffer = AUTH_username.getBytes();
-            dout.write(byteBuffer);
-            dout.flush();
+            writeBytes(AUTH_username);
 
-            // replies with OK after printing
+            // server replies with OK after printing out a welcome message and writing system info
 
-            readXML(); // get list of servers
-            Server largestServer = getLargestServer(serverList); // get largest server
+            setLargestServer();
 
             System.out.println("XML file successfully read. Sending REDY ...");
-            byteBuffer = REDY.getBytes();
-            dout.write(byteBuffer);
-            dout.flush();
+            writeBytes(REDY);
 
-            // server sends JOBN
-            System.out.println("receiving JOBN ...");
+            System.out.println("receiving JOBN ..."); // server sends JOBN
 
             din.skip(OK.length() * 2); // skip the first two OK commands sent by server
             charBuffer = new char[CHAR_BUFFER_LENGTH];
@@ -140,6 +133,25 @@ public class Client {
         } catch (Exception e) {
             System.out.println("Exception: " + e.getMessage());
         }
+    }
+
+    public static void setup() throws IOException {
+        serverList = new ArrayList<>(); // initialise list of servers
+
+        s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of 50000
+        din = new InputStreamReader(s.getInputStream());
+        dout = new DataOutputStream(s.getOutputStream());
+    }
+
+    public static void writeBytes(String command) throws IOException {
+        byteBuffer = command.getBytes();
+        dout.write(byteBuffer);
+        dout.flush();
+    }
+
+    public static void setLargestServer() {
+        readXML(); // get list of servers
+        largestServer = getLargestServer(serverList); // get largest server
     }
 
     public static void readXML() {
