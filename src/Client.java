@@ -40,6 +40,7 @@ public class Client {
                                                                        (created from stringBuffer)     */
 
     private static final int CHAR_BUFFER_LENGTH = 100;
+    private static String scheduleString; // string to be scheduled
 
     // create server/list objects
     private static List<Server> serverList;
@@ -70,55 +71,42 @@ public class Client {
             System.out.println("receiving JOBN ..."); // server sends JOBN
 
             din.skip(OK.length() * 2); // skip the first two OK commands sent by server
-            charBuffer = new char[CHAR_BUFFER_LENGTH];
-            din.read(charBuffer); // read from din into charBuffer
+            readCharBuffer(); // reset charBuffer & read job
 
             while (!(stringBuffer = String.valueOf(charBuffer)).contains(NONE)) {
 
                 if (stringBuffer.contains(JOBN)) {
-                    fieldBuffer = stringBuffer.split(" "); // split String into array of strings (each string being a
-                                                           // field of JOBN)
+                    fieldBuffer = stringBuffer.split(" "); /* split String into array of strings
+                                                              (each string being a field of JOBN) */
 
                     System.out.println("New JOB successfully received.");
                     Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
                     job.printFields();
 
                     /* SCHEDULE JOB */
-                    String scheduleString = SCHD + " " + job.id + " " + largestServer.type + " " + largestServer.id;
-                    byteBuffer = scheduleString.getBytes();
-                    dout.write(byteBuffer);
-                    dout.flush();
+                    scheduleString = SCHD + " " + job.id + " " + largestServer.type + " " + largestServer.id;
+                    writeBytes(scheduleString);
 
-                    // Send REDY for the next job
-                    byteBuffer = REDY.getBytes();
-                    dout.write(byteBuffer);
-                    dout.flush();
+                    writeBytes(REDY); // send REDY for the next job
 
                     System.out.println("receiving JOBN ...");
 
-                    // reset charBuffer & read next job
                     din.skip(OK.length()); // skip OK
-                    charBuffer = new char[CHAR_BUFFER_LENGTH];
-                    din.read(charBuffer); // read from din into charBuffer
+                    readCharBuffer(); // reset charBuffer & read next job
+
                 } else if (stringBuffer.contains(JCPL)) {
                     System.out.println("Job completed.");
 
-                    // Send REDY for the next job (if any)
-                    byteBuffer = REDY.getBytes();
-                    dout.write(byteBuffer);
-                    dout.flush();
+                    writeBytes(REDY); // Send REDY for the next job (if any)
 
-                    // reset charBuffer & read next job
-                    charBuffer = new char[CHAR_BUFFER_LENGTH];
-                    din.read(charBuffer); // read from din into charBuffer
+                    readCharBuffer(); // reset charBuffer & read next job
                 }
 
             }
 
             System.out.println("TERMINATING CONNECTION ...");
-            byteBuffer = QUIT.getBytes();
-            dout.write(byteBuffer);
-            dout.flush();
+            
+            writeBytes(QUIT);
 
             System.out.println("CONNECTION TERMINATED.");
 
@@ -149,11 +137,6 @@ public class Client {
         dout.flush();
     }
 
-    public static void setLargestServer() {
-        readXML(); // get list of servers
-        largestServer = getLargestServer(serverList); // get largest server
-    }
-
     public static void readXML() {
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
@@ -177,14 +160,13 @@ public class Client {
 
                     Server dss = new Server(j, type, limit, bootupTime, hourlyRate, core, memory, disk); // create
                                                                                                          // server
-                    // object we read
-                    // from xml
+                                                                                                         // object we read
+                                                                                                         // from xml
                     serverList.add(dss); // add server object to ServerList
 
                     // print out the server information we read from ds-system.xml
                     System.out.printf("%s %s %s %s %s %s %s %s", dss.id, dss.type, dss.limit, dss.bootUpTime,
-                            dss.hourlyRate, dss.core, dss.memory, dss.disk);
-                    System.out.println();
+                                                                 dss.hourlyRate, dss.core, dss.memory, dss.disk + "\n");
                 }
             }
 
@@ -194,15 +176,26 @@ public class Client {
 
     }
 
+    public static void setLargestServer() {
+        readXML(); // get list of servers
+        largestServer = getLargestServer(serverList); // get largest server
+    }
+
+    public static void readCharBuffer() throws IOException {
+        charBuffer = new char[CHAR_BUFFER_LENGTH];
+        din.read(charBuffer); // read from din into charBuffer
+    }
+
     public static Server getLargestServer(List<Server> s) {
-        Server largestServer = s.get(0);
+        largestServer = s.get(0);
 
         for (int i = 1; i < s.size(); i++) {
             if (s.get(i).core >= largestServer.core && s.get(i).memory >= largestServer.memory
-                    && s.get(i).disk >= largestServer.disk) {
+                                                    && s.get(i).disk >= largestServer.disk) {
                 largestServer = s.get(i);
             }
         }
+        
         return largestServer;
     }
 
