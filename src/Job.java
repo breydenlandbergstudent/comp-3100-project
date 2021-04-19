@@ -1,11 +1,11 @@
 public class Job {
-    protected static String type;
-    protected static Integer submitTime;
-    protected static Integer id;
-    protected static Integer estRuntime;
-    protected static Integer core;
-    protected static Integer memory;
-    protected static Integer disk;
+    protected String type;
+    protected Integer submitTime;
+    protected Integer id;
+    protected Integer estRuntime;
+    protected Integer core;
+    protected Integer memory;
+    protected Integer disk;
 
     public Job(String[] fieldBuffer) {
         type = fieldBuffer[0];

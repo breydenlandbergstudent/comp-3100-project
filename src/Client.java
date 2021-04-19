@@ -20,6 +20,7 @@ public class Client {
 
     // commands
     private static final String HELO = "HELO";
+    private static final String OK = "OK";
     private static final String AUTH = "AUTH";
     private static final String username = "amir";
     private static final String AUTH_username = AUTH + " " + username;
@@ -27,7 +28,6 @@ public class Client {
     private static final String JOBN = "JOBN";
     private static final String JCPL = "JCPL";
     private static final String SCHD = "SCHD";
-    private static final String OK = "OK";
     private static final String NONE = "NONE";
     private static final String QUIT = "QUIT";
 
@@ -67,7 +67,7 @@ public class Client {
             System.out.println("XML file successfully read. Sending REDY ...");
             writeBytes(REDY);
 
-            readCharBuffer(); // reset charBuffer & read job
+            readStringBuffer(); // reset stringBuffer & read job
 
             while (!stringBuffer.contains(NONE)) {
 
@@ -84,15 +84,16 @@ public class Client {
 
                     writeBytes(REDY); // send REDY for the next job
 
-                    readCharBuffer(); // reset charBuffer & read next job
+                    readStringBuffer(); // reset stringBuffer & read next job
                 } 
                 else if (stringBuffer.contains(JCPL)) {
                     writeBytes(REDY); // send REDY for the next job
 
-                    readCharBuffer(); // reset charBuffer & read next job
+                    readStringBuffer(); // reset stringBuffer & read next job
                 } else if (stringBuffer.contains(OK)) {
-                    readCharBuffer(); // reset charBuffer & read next job
+                    readStringBuffer(); // reset stringBuffer & read next job
                 } 
+
             }
 
             System.out.println("TERMINATING CONNECTION ...");
@@ -119,6 +120,7 @@ public class Client {
         serverList = new ArrayList<>(); // initialise list of servers
 
         s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of 50000
+
         isr = new InputStreamReader(s.getInputStream());
         din = new BufferedReader(isr);
         dout = new DataOutputStream(s.getOutputStream());
@@ -126,7 +128,6 @@ public class Client {
 
     public static void writeBytes(String command) throws IOException {
         byteBuffer = (command + "\n").getBytes();
-        // byteBuffer = command.getBytes();
         dout.write(byteBuffer);
         dout.flush();
     }
@@ -175,9 +176,8 @@ public class Client {
         largestServer = getLargestServer(serverList); // get largest server
     }
 
-    public static void readCharBuffer() throws IOException {
-        // charBuffer = new char[CHAR_BUFFER_LENGTH];
-        stringBuffer = din.readLine(); // read from din into charBuffer
+    public static void readStringBuffer() throws IOException {
+        stringBuffer = din.readLine(); // read from din into stringBuffer
     }
 
     public static Server getLargestServer(List<Server> s) {
