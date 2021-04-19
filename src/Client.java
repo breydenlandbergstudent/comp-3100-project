@@ -14,16 +14,13 @@ public class Client {
     private static final int serverPort = 50000;
 
     // streams
-    private static InputStreamReader isr;
-    private static BufferedReader din;
+    private static InputStreamReader din;
     private static DataOutputStream dout;
 
     // commands
     private static final String HELO = "HELO";
     private static final String OK = "OK";
     private static final String AUTH = "AUTH";
-    private static final String username = "amir";
-    private static final String AUTH_username = AUTH + " " + username;
     private static final String REDY = "REDY";
     private static final String JOBN = "JOBN";
     private static final String JCPL = "JCPL";
@@ -32,6 +29,7 @@ public class Client {
     private static final String QUIT = "QUIT";
 
     // buffer fields
+    private static char[] charBuffer;
     private static byte[] byteBuffer; // will hold the current message from the server stored as bytes
 
     private static String stringBuffer; /* will hold the current message from the server stored in a string
@@ -41,42 +39,43 @@ public class Client {
 
     private static String scheduleString; // string to be scheduled
 
+    private static final int CHAR_BUFFER_LENGTH = 80;
+
     // create server/list objects
     private static List<Server> serverList;
     private static Server largestServer;
 
     // create file object
-    private static File DSsystemXML = new File("/home/amir/Documents/Testing/ds-system.xml");
+    private static File DSsystemXML;
 
     public static void main(String[] args) throws IOException {
         setup();
 
         try {
-            System.out.println("sent HELO");
-            writeBytes(HELO);
+            writeBytes(HELO); // client sends HELO
 
             // server replies with OK
 
             System.out.println("sent AUTH username");
-            writeBytes(AUTH_username);
+            writeBytes(AUTH + " " + System.getProperty("user.name"));
 
             // server replies with OK after printing out a welcome message and writing system info
 
             setLargestServer();
 
-            System.out.println("XML file successfully read. Sending REDY ...");
+            System.out.println("XML file successfully read and servers extracted. Sending REDY ...");
             writeBytes(REDY);
 
             readStringBuffer(); // reset stringBuffer & read job
 
-            while (!stringBuffer.contains(NONE)) {
+            while (!(stringBuffer = String.valueOf(charBuffer)).contains(NONE)) {
+                System.out.println(stringBuffer);
 
                 if (stringBuffer.contains(JOBN)) {
                     fieldBuffer = stringBuffer.split(" "); /* split String into array of strings
                                                               (each string being a field of JOBN) */
 
                     Job job = new Job(fieldBuffer); // create new Job object with data from fieldBuffer
-                    // job.printFields();
 
                     /* SCHEDULE JOB */
                     scheduleString = SCHD + " " + job.id + " " + largestServer.type + " " + largestServer.id;
@@ -102,9 +101,7 @@ public class Client {
 
             System.out.println("CONNECTION TERMINATED.");
 
-            din.close();
-            dout.close();
-            s.close();
+            close();
         } catch (UnknownHostException e) {
             System.out.println("Unknown Host Exception: " + e.getMessage());
         } catch (EOFException e) {
@@ -121,13 +118,19 @@ public class Client {
 
         s = new Socket(hostname, serverPort); // socket with host IP of 127.0.0.1 (localhost), server port of 50000
 
-        isr = new InputStreamReader(s.getInputStream());
-        din = new BufferedReader(isr);
+        din = new InputStreamReader(s.getInputStream());
         dout = new DataOutputStream(s.getOutputStream());
+
+        setSystemXML();
+    }
+
+    public static void setSystemXML() {
+        String dir = System.getProperty("user.dir") + "/ds-system.xml";
+        DSsystemXML = new File(dir);
     }
 
     public static void writeBytes(String command) throws IOException {
-        byteBuffer = (command + "\n").getBytes();
+        byteBuffer = command .getBytes();
         dout.write(byteBuffer);
         dout.flush();
     }
@@ -177,7 +180,8 @@ public class Client {
     }
 
     public static void readStringBuffer() throws IOException {
-        stringBuffer = din.readLine(); // read from din into stringBuffer
+        charBuffer = new char[CHAR_BUFFER_LENGTH];
+        din.read(charBuffer);
     }
 
     public static Server getLargestServer(List<Server> s) {
@@ -190,6 +194,12 @@ public class Client {
         }
         
         return largestServer;
+    }
+    
+    public static void close() throws IOException {
+        din.close();
+        dout.close();
+        s.close();
     }
 
 }
